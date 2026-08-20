@@ -1,12 +1,7 @@
 rootProject.name = "pebblehost-deploy"
 
 pluginManagement {
-    repositories {
-        maven {
-            url = uri("plugin-repo")
-        }
-        gradlePluginPortal()
-    }
+    includeBuild("plugin")
 }
 
-include(":plugin", ":test-plugin")
+include("test-plugin")

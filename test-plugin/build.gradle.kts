@@ -1,6 +1,6 @@
 plugins {
     java
-    id("dev.pebblehost.deploy") version "0.1.0"
+    id("dev.pebblehost.deploy")
 }
 
 group = "dev.pebblehost"

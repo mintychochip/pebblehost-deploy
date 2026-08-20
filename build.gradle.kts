@@ -2,16 +2,12 @@ plugins {
     `base`
 }
 
-tasks.register("publishLocalPlugin") {
-    group = "build"
-    description = "Publishes the deploy plugin to plugin-repo for test-plugin consumption"
-    dependsOn(":plugin:publishAllPublicationsToLocalPluginRepoRepository")
-}
+val pluginBuild = gradle.includedBuild("plugin")
 
 tasks.named("build") {
-    dependsOn("publishLocalPlugin", ":plugin:build", ":test-plugin:build")
+    dependsOn(pluginBuild.task(":build"), ":test-plugin:build")
 }
 
 tasks.named("check") {
-    dependsOn(":plugin:check", ":test-plugin:check")
+    dependsOn(pluginBuild.task(":check"), ":test-plugin:check")
 }

@@ -1,13 +1,17 @@
-tasks.register("buildAll") {
-    group = "build"
-    description = "Builds the plugin and test-plugin subprojects"
-    dependsOn(":test-plugin:build")
-    dependsOn(gradle.includedBuild("plugin").task(":build"))
+plugins {
+    `base`
 }
 
-tasks.register("checkAll") {
-    group = "verification"
-    description = "Runs checks for all subprojects"
-    dependsOn(gradle.includedBuild("plugin").task(":check"))
-    dependsOn(":test-plugin:check")
+tasks.register("publishLocalPlugin") {
+    group = "build"
+    description = "Publishes the deploy plugin to plugin-repo for test-plugin consumption"
+    dependsOn(":plugin:publishAllPublicationsToLocalPluginRepoRepository")
+}
+
+tasks.named("build") {
+    dependsOn("publishLocalPlugin", ":plugin:build", ":test-plugin:build")
+}
+
+tasks.named("check") {
+    dependsOn(":plugin:check", ":test-plugin:check")
 }

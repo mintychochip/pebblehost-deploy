@@ -8,6 +8,8 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.options.Option;
 import org.gradle.api.tasks.UntrackedTask;
@@ -18,6 +20,7 @@ import java.io.File;
 public abstract class DeployPebbleHostTask extends DefaultTask {
     @Input @Optional public abstract Property<String> getToken();
     @Input public abstract Property<String> getBaseUrl();
+    @PathSensitive(PathSensitivity.NAME_ONLY)
     @InputFile public abstract RegularFileProperty getJar();
     @Input public abstract Property<String> getTargetDir();
     @Input public abstract Property<String> getStrategy();

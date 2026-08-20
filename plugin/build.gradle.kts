@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 group = "dev.pebblehost"
@@ -27,6 +28,15 @@ gradlePlugin {
         create("pebblehostDeploy") {
             id = "dev.pebblehost.deploy"
             implementationClass = "dev.pebblehost.deploy.PebbleHostPlugin"
+        }
+    }
+}
+
+publishing {
+    repositories {
+        maven {
+            name = "localPluginRepo"
+            url = uri("${rootProject.projectDir}/plugin-repo")
         }
     }
 }

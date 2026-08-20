@@ -9,9 +9,10 @@ servers via the [pebblehost-cli](https://github.com/mintychochip/pebblehost-cli)
 
 ```
 pebblehost-deploy/
-├── plugin/          # Gradle deploy plugin (`dev.pebblehost.deploy`)
-├── test-plugin/     # Sample Paper plugin that consumes the deploy plugin
-├── gradlew          # Root wrapper — run all builds from here
+├── plugin/          # `:plugin` — Gradle deploy plugin (`dev.pebblehost.deploy`)
+├── test-plugin/     # `:test-plugin` — sample Paper plugin consumer
+├── plugin-repo/     # local Maven repo for sibling plugin resolution
+├── gradlew          # root wrapper — run all builds from here
 └── settings.gradle.kts
 ```
 
@@ -21,10 +22,10 @@ Build the plugin and run its tests:
 ./gradlew :plugin:build
 ```
 
-Build everything:
+Build everything (publishes plugin to `plugin-repo`, then builds both subprojects):
 
 ```bash
-./gradlew buildAll
+./gradlew build
 ```
 
 ## Prerequisites

@@ -36,7 +36,8 @@
 
 **Interfaces:**
 - Consumes: existing `Api` struct (`client`, `base_url`, `token`), `Response` enum, `Command` enum, `execute`/`run` functions.
-- Produces: `Command::FilePush(FilePushArgs)`, `FilePushArgs { server_id: String, local: String, directory: String }`, `Api::push_file(server_id, local, directory) -> Result<Response, CliError>`.
+- Produces: `Command::File(FileCommand)`, `FileCommand { subcommand: FileSubcommand }`, `FileSubcommand::{Contents(FileArgs), Push(FilePushArgs)}`, `Api::push_file(server_id, local, directory) -> Result<Response, CliError>`.
+- **Breaking change (intentional):** `pb file <server> <path>` becomes `pb file contents <server> <path>`; `pb file push <local> --server <id> --directory <dir>` is the new upload command. The existing `Command::File(FileArgs)` leaf is replaced by the nested group.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -95,13 +96,27 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 
 Add to `src/main.rs`:
 
-1. New subcommand variant in `enum Command` (after `File(FileArgs)`):
+1. Replace the `File(FileArgs)` variant in `enum Command` with a nested group:
 ```rust
-    FilePush(FilePushArgs),
+    File(FileCommand),
 ```
 
-2. New args struct (after `FileArgs`):
+2. Add the nested command structs (after `FileArgs`):
 ```rust
+#[derive(Subcommand, Debug)]
+enum FileSubcommand {
+    /// Print the contents of a remote file.
+    Contents(FileArgs),
+    /// Upload a local file to the server.
+    Push(FilePushArgs),
+}
+
+#[derive(Args, Debug)]
+struct FileCommand {
+    #[command(subcommand)]
+    subcommand: FileSubcommand,
+}
+
 #[derive(Args, Debug)]
 struct FilePushArgs {
     server_id: String,
@@ -160,11 +175,27 @@ struct FilePushArgs {
     }
 ```
 
-4. New `execute` arm (after `Command::File(a)`):
+4. Replace the `Command::File(a)` execute arm with the nested dispatch:
 ```rust
-        Command::FilePush(a) => {
-            api.push_file(&a.server_id, &a.local, &a.directory).await
-        }
+        Command::File(cmd) => match cmd.subcommand {
+            FileSubcommand::Contents(a) => {
+                api.request(
+                    Method::GET,
+                    &path_server(&a.server_id, "/files/contents"),
+                    &[("file", a.path)],
+                    None,
+                )
+                .await
+            }
+            FileSubcommand::Push(a) => {
+                api.push_file(&a.server_id, &a.local, &a.directory).await
+            }
+        },
+```
+
+5. Update the existing `raw_text_success_body_is_preserved` test to use the new `contents` form:
+```rust
+    // Command::File(FileCommand { subcommand: FileSubcommand::Contents(FileArgs { server_id: "srv-1".into(), path: "server.properties".into() }) })
 ```
 
 - [ ] **Step 5: Run test to verify it passes**
@@ -175,7 +206,7 @@ Expected: PASS — the test verifies both the upload-URL fetch (bearer auth, `di
 - [ ] **Step 6: Run the full pre-flight**
 
 Run: `cargo fmt --check && cargo clippy --all-targets --all-features -- -D warnings && cargo test --all-features`
-Expected: all pass.
+Expected: all pass. Note: the existing `raw_text_success_body_is_preserved` test must be updated for the nested `contents` form (step 4.5).
 
 - [ ] **Step 7: Commit on a branch**
 
@@ -183,7 +214,7 @@ Expected: all pass.
 cd /home/jlo/dev/pebblehost-cli-ref
 git checkout -b feat/file-push
 git add Cargo.toml src/main.rs
-git commit -m "feat: add pb file push for two-step uploads"
+git commit -m "feat: add pb file push and nest file under a group"
 ```
 
 ---

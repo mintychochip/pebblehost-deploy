@@ -1,0 +1,9 @@
+# Copy to test-plugin/gradle.properties and fill in. Never commit real values.
+# PEBBLEHOST_API_TOKEN is read from the environment (or pebblehostToken here).
+#
+# Comma-separated targets for the deploy plugin: serverId[:group]
+# Example: pebblehostTargets=abc123:canary,def456:prod
+pebblehostTargets=
+
+# Optional: override the pb binary path (default: pb on PATH)
+# pebblehostPbBinary=/path/to/pb

@@ -1,36 +1,13 @@
-plugins {
-    `java-gradle-plugin`
+tasks.register("buildAll") {
+    group = "build"
+    description = "Builds the plugin and test-plugin subprojects"
+    dependsOn(":test-plugin:build")
+    dependsOn(gradle.includedBuild("plugin").task(":build"))
 }
 
-group = "dev.pebblehost"
-version = "0.1.0"
-
-java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation("com.google.code.gson:gson:2.11.0")
-    testImplementation(gradleTestKit())
-    testImplementation(platform("org.junit:junit-bom:5.10.2"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-}
-
-gradlePlugin {
-    plugins {
-        create("pebblehostDeploy") {
-            id = "dev.pebblehost.deploy"
-            implementationClass = "dev.pebblehost.deploy.PebbleHostPlugin"
-        }
-    }
-}
-
-tasks.test {
-    useJUnitPlatform()
+tasks.register("checkAll") {
+    group = "verification"
+    description = "Runs checks for all subprojects"
+    dependsOn(gradle.includedBuild("plugin").task(":check"))
+    dependsOn(":test-plugin:check")
 }

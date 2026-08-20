@@ -1,0 +1,17 @@
+name: PebbleHostTest
+version: '1.0.0'
+main: dev.pebblehost.test.PebbleHostTestPlugin
+description: Test plugin for PebbleHost deployment verification
+author: pebblehost-deploy
+api-version: '26.2'
+
+commands:
+  phdeploy:
+    description: Report plugin version and deploy marker
+    usage: /phdeploy info
+    permission: pebblehost.test.info
+
+permissions:
+  pebblehost.test.info:
+    description: Allows the player to check the deployed plugin version
+    default: true

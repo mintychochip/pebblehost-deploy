@@ -5,6 +5,28 @@ servers via the [pebblehost-cli](https://github.com/mintychochip/pebblehost-cli)
 `pb` binary. Supports manual (`deployPebbleHost`) and CI (reusable
 `deploy.yml` workflow) deployment, with flat or grouped canary→prod rollout.
 
+## Repository layout
+
+```
+pebblehost-deploy/
+├── plugin/          # Gradle deploy plugin (`dev.pebblehost.deploy`)
+├── test-plugin/     # Sample Paper plugin that consumes the deploy plugin
+├── gradlew          # Root wrapper — run all builds from here
+└── settings.gradle.kts
+```
+
+Build the plugin and run its tests:
+
+```bash
+./gradlew :plugin:build
+```
+
+Build everything:
+
+```bash
+./gradlew buildAll
+```
+
 ## Prerequisites
 
 - Java 17+ and the Gradle wrapper (included).
@@ -37,7 +59,7 @@ pebblehost {
 }
 ```
 
-Manual: `./gradlew deployPebbleHost`
+Manual: `./gradlew :test-plugin:deployPebbleHost`
 
 CI: run the reusable `deploy.yml` workflow (workflow_dispatch). It builds the
 jar, installs `pb`, and runs the same task with `PEBBLEHOST_API_TOKEN` from

@@ -1,0 +1,36 @@
+name: Deploy to PebbleHost
+
+on:
+  workflow_dispatch:
+    inputs:
+      restart:
+        description: Restart servers after upload
+        type: boolean
+        default: true
+      rollback:
+        description: Rollback policy on failure (abort|restore)
+        type: choice
+        options: [abort, restore]
+        default: abort
+      continue-after-canary:
+        description: Proceed past the canary group
+        type: boolean
+        default: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Install pb
+        run: curl -sSL https://raw.githubusercontent.com/mintychochip/pebblehost-cli/master/scripts/install.sh | sh
+      - name: Build
+        run: ./gradlew build
+      - name: Deploy
+        env:
+          PEBBLEHOST_API_TOKEN: ${{ secrets.PEBBLEHOST_API_TOKEN }}
+        run: ./gradlew deployPebbleHost --deploy-restart=${{ inputs.restart }} --deploy-rollback=${{ inputs.rollback }} --continue-after-canary=${{ inputs.continue-after-canary }}

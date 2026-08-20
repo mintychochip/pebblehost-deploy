@@ -14,7 +14,8 @@ public class Target {
     public Target(ObjectFactory objects) {
         this.serverId = objects.property(String.class);
         this.group = objects.property(String.class).convention("default");
-        this.restart = objects.property(Boolean.class).convention(true);
+        // No convention: unset means "fall back to the global config restart value".
+        this.restart = objects.property(Boolean.class);
     }
 
     public Property<String> getServerId() { return serverId; }

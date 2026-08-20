@@ -1,3 +1,0 @@
-rootProject.name = "pebblehost-deploy"
-
-include(":plugin", ":test-plugin")

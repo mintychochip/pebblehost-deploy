@@ -47,8 +47,20 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - uses: actions/checkout@v4
+        with:
+          repository: mintychochip/pebblehost-cli
+          ref: feat/file-push-restored
+          path: .pebblehost-cli
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Build pb
+        working-directory: .pebblehost-cli
+        run: cargo build --release
       - name: Install pb
-        run: curl -sSL https://raw.githubusercontent.com/mintychochip/pebblehost-cli/master/scripts/install.sh | sh
+        run: install -m 0755 .pebblehost-cli/target/release/pb "$HOME/.local/bin/pb"
+      - name: Verify pb file push
+        run: pb file --help | grep -q 'push'
       - name: Build
         run: ./gradlew build
       - name: Deploy

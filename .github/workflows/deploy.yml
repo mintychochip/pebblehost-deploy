@@ -1,6 +1,27 @@
 name: Deploy to PebbleHost
 
 on:
+  workflow_call:
+    inputs:
+      restart:
+        description: Restart servers after upload
+        type: boolean
+        required: false
+        default: true
+      rollback:
+        description: Rollback policy on failure (abort|restore)
+        type: string
+        required: false
+        default: abort
+      continue-after-canary:
+        description: Proceed past the canary group
+        type: boolean
+        required: false
+        default: false
+    secrets:
+      PEBBLEHOST_API_TOKEN:
+        description: PebbleHost client API token
+        required: true
   workflow_dispatch:
     inputs:
       restart:

@@ -8,6 +8,7 @@ import org.gradle.api.provider.Property;
 import javax.inject.Inject;
 
 public abstract class PebbleHostExtension {
+    private final ObjectFactory objects;
     private final Property<String> token;
     private final Property<String> baseUrl;
     private final RegularFileProperty jar;
@@ -19,10 +20,12 @@ public abstract class PebbleHostExtension {
     private final Property<String> verifyState;
     private final Property<Long> verifyTimeoutMs;
     private final Property<String> rollback;
+    private final Property<String> pbBinary;
     private final ListProperty<Target> targets;
 
     @Inject
     public PebbleHostExtension(ObjectFactory objects) {
+        this.objects = objects;
         this.token = objects.property(String.class);
         this.baseUrl = objects.property(String.class).convention("https://panel.pebblehost.com");
         this.jar = objects.fileProperty();
@@ -34,6 +37,7 @@ public abstract class PebbleHostExtension {
         this.verifyState = objects.property(String.class).convention("running");
         this.verifyTimeoutMs = objects.property(Long.class).convention(180_000L);
         this.rollback = objects.property(String.class).convention("abort");
+        this.pbBinary = objects.property(String.class).convention("pb");
         this.targets = objects.listProperty(Target.class);
     }
 
@@ -48,5 +52,13 @@ public abstract class PebbleHostExtension {
     public Property<String> getVerifyState() { return verifyState; }
     public Property<Long> getVerifyTimeoutMs() { return verifyTimeoutMs; }
     public Property<String> getRollback() { return rollback; }
+    public Property<String> getPbBinary() { return pbBinary; }
     public ListProperty<Target> getTargets() { return targets; }
+
+    /** Convenience: add a target server to the rollout. */
+    public void target(String serverId) {
+        Target t = objects.newInstance(Target.class);
+        t.getServerId().set(serverId);
+        targets.add(t);
+    }
 }

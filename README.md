@@ -1,5 +1,8 @@
 # pebblehost-deploy
 
+[![Build](https://github.com/mintychochip/pebblehost-deploy/actions/workflows/build.yml/badge.svg)](https://github.com/mintychochip/pebblehost-deploy/actions/workflows/build.yml)
+[![License: MIT](https://img.shields.io/github/license/mintychochip/pebblehost-deploy)](LICENSE)
+
 A Gradle plugin that deploys a built Minecraft plugin/mod jar to PebbleHost
 servers via the [pebblehost-cli](https://github.com/mintychochip/pebblehost-cli)
 `pb` binary. Supports manual (`deployPebbleHost`) and CI (reusable

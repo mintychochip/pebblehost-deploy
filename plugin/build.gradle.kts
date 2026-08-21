@@ -1,5 +1,6 @@
 plugins {
     `java-gradle-plugin`
+    `maven-publish`
 }
 
 group = "dev.pebblehost"
@@ -31,6 +32,31 @@ gradlePlugin {
     }
 }
 
+publishing {
+    repositories {
+        maven {
+            name = "GitHubPackages"
+            url = uri("https://maven.pkg.github.com/mintychochip/pebblehost-deploy")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR") ?: findProperty("gpr.user")?.toString()
+                password = System.getenv("GITHUB_TOKEN") ?: findProperty("gpr.key")?.toString()
+            }
+        }
+    }
+    publications.withType<MavenPublication> {
+        pom {
+            name.set("pebblehost-deploy")
+            description.set("Gradle plugin that deploys Minecraft plugin/mod jars to PebbleHost servers")
+            url.set("https://github.com/mintychochip/pebblehost-deploy")
+            licenses {
+                license {
+                    name.set("MIT")
+                    url.set("https://opensource.org/licenses/MIT")
+                }
+            }
+        }
+    }
+}
 tasks.test {
     useJUnitPlatform()
 }

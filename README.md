@@ -35,6 +35,38 @@ Build everything:
 ./gradlew build
 ```
 
+## Installation
+
+Published to GitHub Packages on every `v*` tag. In the consuming project's
+`settings.gradle.kts`:
+
+```kotlin
+pluginManagement {
+    repositories {
+        maven {
+            url = uri("https://maven.pkg.github.com/mintychochip/pebblehost-deploy")
+            credentials {
+                username = System.getenv("GITHUB_ACTOR")
+                    ?: settings.extra["gpr.user"]?.toString()
+                password = System.getenv("GITHUB_TOKEN")
+                    ?: settings.extra["gpr.key"]?.toString()
+            }
+        }
+        gradlePluginPortal()
+    }
+}
+```
+
+GitHub Packages requires authentication even for public packages: set
+`GITHUB_TOKEN`/`GITHUB_ACTOR`, or `gpr.user`/`gpr.key` in `gradle.properties`
+with a token that has `read:packages`. Then apply the plugin:
+
+```kotlin
+plugins {
+    id("dev.pebblehost.deploy") version "2026.08.21"
+}
+```
+
 ## Prerequisites
 
 - Java 17+ and the Gradle wrapper (included).

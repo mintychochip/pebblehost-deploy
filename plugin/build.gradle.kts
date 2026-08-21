@@ -3,7 +3,7 @@ plugins {
 }
 
 group = "dev.pebblehost"
-version = "0.1.0"
+version = "2026.08.21"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17

@@ -126,6 +126,14 @@ Task property `pbVersion` wired like its siblings; no new CLI options.
 - README: auto-install behavior, `pbVersion`, cache location, token/rate-limit
   notes.
 
+## Erratum (2026-08-22, post-merge)
+
+- ~~Changing `deploy.yml` is a non-goal~~ — superseded by the approved
+  "In the plugin" option whose stated outcome was that `deploy.yml` drops its
+  cargo-build steps. The workflow now installs `pb` from the latest release
+  asset (linux x86_64) via `gh api` + `curl | tar`, keeping the
+  `pb file --help` verification, and runs on JVM 25 to match plugin bytecode.
+
 ## Non-goals
 
 - Changing `deploy.yml` (explicit scope decision).

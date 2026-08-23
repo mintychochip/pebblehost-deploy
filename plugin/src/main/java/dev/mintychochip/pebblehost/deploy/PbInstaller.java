@@ -13,13 +13,16 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
@@ -53,13 +56,17 @@ public class PbInstaller {
     /** Returns an absolute filesystem path to a usable pb binary. */
     public String resolve(String pbBinary, String pbVersion) {
         if (isExplicit(pbBinary)) {
-            Path explicit = Path.of(pbBinary);
-            if (!Files.isRegularFile(explicit)) {
-                throw new GradleException("pbBinary '" + pbBinary
-                    + "' does not exist. Point it at an existing pb binary, or leave it at '"
-                    + DEFAULT_BINARY + "' to let the plugin manage installation.");
+            try {
+                Path explicit = Path.of(pbBinary);
+                if (!Files.isRegularFile(explicit)) {
+                    throw new GradleException("pbBinary '" + pbBinary
+                        + "' does not exist. Point it at an existing pb binary, or leave it at '"
+                        + DEFAULT_BINARY + "' to let the plugin manage installation.");
+                }
+                return explicit.toAbsolutePath().toString();
+            } catch (InvalidPathException e) {
+                throw new GradleException("pbBinary '" + pbBinary + "' is not a valid filesystem path.", e);
             }
-            return explicit.toAbsolutePath().toString();
         }
         Path onPath = findOnPath();
         if (onPath != null) {
@@ -85,14 +92,12 @@ public class PbInstaller {
 
     private String install(String versionSpec) {
         String tag = normalizeTag(versionSpec);
-        Path preKnownDir = null;
         String endpoint;
         if (tag.equals("latest")) {
             endpoint = apiBase + "latest";
         } else {
             // Pinned: the tag is known up front, so a cache hit is fully offline.
-            preKnownDir = cacheRoot.resolve(tag);
-            Path cached = preKnownDir.resolve(binaryName());
+            Path cached = cacheRoot.resolve(tag).resolve(binaryName());
             if (Files.isRegularFile(cached)) {
                 logger.lifecycle("Using cached pb {} from {}", tag, cached);
                 return cached.toAbsolutePath().toString();
@@ -107,7 +112,7 @@ public class PbInstaller {
         }
         String version = resolvedTag.substring(1);
         String target = platformTarget(System.getProperty("os.name"), System.getProperty("os.arch"));
-        String assetName = "pebblehost-cli-" + version + "-" + target;
+        String assetName = "pebblehost-cli-" + version + "-" + target + ".tar.gz";
 
         String downloadUrl = null;
         String expectedSha256 = null;
@@ -115,7 +120,12 @@ public class PbInstaller {
             JsonObject asset = element.getAsJsonObject();
             if (assetName.equals(asset.get("name").getAsString())) {
                 downloadUrl = asset.get("browser_download_url").getAsString();
-                expectedSha256 = digestOf(asset);
+                JsonElement digest = asset.get("digest");
+                if (digest == null || !digest.getAsString().startsWith("sha256:")) {
+                    throw new GradleException("pb release asset '" + assetName
+                        + "' publishes no sha256 digest; refusing to install an unverified binary.");
+                }
+                expectedSha256 = digest.getAsString().substring("sha256:".length());
                 break;
             }
         }
@@ -135,9 +145,11 @@ public class PbInstaller {
     }
 
     private void downloadAndExtract(String url, String assetName, String expectedSha256, Path dir, Path binary) {
+        Path staging = null;
         try {
-            Files.createDirectories(dir);
-            Path tarball = Files.createTempFile(dir, assetName, ".part");
+            Files.createDirectories(dir.getParent());
+            staging = Files.createTempDirectory(dir.getParent(), dir.getFileName().toString() + "-");
+            Path tarball = Files.createTempFile(staging, assetName, ".part");
             String actualSha256;
             try (InputStream in = open(url, assetName); OutputStream out = Files.newOutputStream(tarball)) {
                 MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
@@ -149,27 +161,36 @@ public class PbInstaller {
                 }
                 actualSha256 = HexFormat.of().formatHex(sha256.digest());
             }
-            if (expectedSha256 == null) {
-                logger.warn("pb installer: GitHub publishes no sha256 digest for {}; skipping verification", assetName);
-            } else if (!actualSha256.equalsIgnoreCase(expectedSha256)) {
+            if (!actualSha256.equalsIgnoreCase(expectedSha256)) {
                 Files.deleteIfExists(tarball);
                 throw new GradleException("Downloaded " + assetName + " failed sha256 verification: expected "
                     + expectedSha256 + ", got " + actualSha256 + ". Nothing was installed.");
             }
-            Process tar = new ProcessBuilder("tar", "-xzf", tarball.toString(), "-C", dir.toString())
+            Process tar = new ProcessBuilder("tar", "-xzf", tarball.toString(), "-C", staging.toString())
                 .redirectErrorStream(true)
                 .start();
-            String tarOutput = new String(tar.getInputStream().readAllBytes());
-            if (!tar.waitFor(60, TimeUnit.SECONDS) || tar.exitValue() != 0) {
+            boolean finished = tar.waitFor(60, TimeUnit.SECONDS);
+            if (!finished) {
                 tar.destroyForcibly();
+                throw new GradleException("timed out extracting " + assetName);
+            }
+            if (tar.exitValue() != 0) {
+                String tarOutput = new String(tar.getInputStream().readAllBytes());
                 throw new GradleException("Failed to extract " + assetName + ": " + tarOutput.strip());
             }
             Files.deleteIfExists(tarball);
-            if (!Files.isRegularFile(binary)) {
+            Path stagingBinary = staging.resolve(binary.getFileName());
+            if (!Files.isRegularFile(stagingBinary)) {
                 throw new GradleException("Archive " + assetName + " did not contain a " + binary.getFileName() + " binary.");
             }
             if (!isWindows()) {
-                Files.setPosixFilePermissions(binary, PosixFilePermissions.fromString("rwxr-xr-x"));
+                Files.setPosixFilePermissions(stagingBinary, PosixFilePermissions.fromString("rwxr-xr-x"));
+            }
+            Files.createDirectories(dir);
+            try {
+                Files.move(stagingBinary, binary, StandardCopyOption.ATOMIC_MOVE);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(stagingBinary, binary, StandardCopyOption.REPLACE_EXISTING);
             }
             logger.lifecycle("Installed pb {} to {}", dir.getFileName(), binary);
         } catch (NoSuchAlgorithmException e) {
@@ -179,6 +200,25 @@ public class PbInstaller {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GradleException("pb auto-install interrupted", e);
+        } finally {
+            if (staging != null) {
+                try {
+                    if (Files.exists(staging)) {
+                        try (var walk = Files.walk(staging)) {
+                            walk.sorted(Comparator.reverseOrder())
+                                .forEach(p -> {
+                                    try {
+                                        Files.deleteIfExists(p);
+                                    } catch (IOException ignored) {
+                                        // best-effort cleanup
+                                    }
+                                });
+                        }
+                    }
+                } catch (IOException ignored) {
+                    // best-effort cleanup
+                }
+            }
         }
     }
 
@@ -197,7 +237,16 @@ public class PbInstaller {
             throw new GradleException("Failed to fetch " + what + " from " + url + " (HTTP " + response.statusCode()
                 + rateLimitHint(response.statusCode()) + ").");
         }
-        return JsonParser.parseString(response.body()).getAsJsonObject();
+        JsonObject release;
+        try {
+            release = JsonParser.parseString(response.body()).getAsJsonObject();
+        } catch (RuntimeException e) {
+            throw new GradleException("pb release metadata from " + url + " was malformed: " + e.getMessage(), e);
+        }
+        if (release.get("tag_name") == null || release.get("assets") == null) {
+            throw new GradleException("pb release metadata is missing expected fields (tag_name/assets).");
+        }
+        return release;
     }
 
     private <T> HttpResponse<T> send(String url, HttpResponse.BodyHandler<T> handler) {
@@ -249,14 +298,6 @@ public class PbInstaller {
         throw new GradleException("pb auto-install does not support os='" + osName + "' arch='" + osArch
             + "'. Supported: linux (x86_64, aarch64, armv7), macOS (x86_64, aarch64), Windows (x86_64). "
             + "Set pebblehost.pbBinary to an existing pb to bypass auto-install.");
-    }
-
-    private static String digestOf(JsonObject asset) {
-        JsonElement digest = asset.get("digest");
-        if (digest == null || !digest.getAsString().startsWith("sha256:")) {
-            return null;
-        }
-        return digest.getAsString().substring("sha256:".length());
     }
 
     private static String binaryName() {

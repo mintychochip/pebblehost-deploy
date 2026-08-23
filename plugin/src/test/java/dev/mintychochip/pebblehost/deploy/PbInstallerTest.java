@@ -14,6 +14,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -102,6 +103,14 @@ class PbInstallerTest {
 
     // ---- network install hardening ----
 
+    private String currentTarget() {
+        return PbInstaller.platformTarget(System.getProperty("os.name"), System.getProperty("os.arch"));
+    }
+
+    private String currentBinName() {
+        return System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows") ? "pb.exe" : "pb";
+    }
+
     private record Stub(HttpServer server, String apiBase, String assetUrl) {}
 
     private Stub startStub(String tag, String version, String sha256, byte[] tarball) throws IOException {
@@ -112,7 +121,7 @@ class PbInstallerTest {
         throws IOException {
         HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         String assetUrl = "http://127.0.0.1:" + server.getAddress().getPort() + "/asset.tar.gz";
-        String assetName = "pebblehost-cli-" + version + "-x86_64-unknown-linux-gnu.tar.gz";
+        String assetName = "pebblehost-cli-" + version + "-" + currentTarget() + ".tar.gz";
         String digestPart = withDigest ? ",\"digest\":\"sha256:" + sha256 + "\"" : "";
         String metadata = "{\"tag_name\":\"" + tag + "\",\"assets\":[{\"name\":\"" + assetName + "\"" + digestPart
             + ",\"browser_download_url\":\"" + assetUrl + "\"}]}";
@@ -134,12 +143,13 @@ class PbInstallerTest {
         return new Stub(server, "http://127.0.0.1:" + server.getAddress().getPort() + "/releases/", assetUrl);
     }
 
-    private long countPbFiles(Path root) throws IOException {
+    private long countBinaryFiles(Path root) throws IOException {
         if (!Files.exists(root)) {
             return 0;
         }
+        String binName = currentBinName();
         try (var walk = Files.walk(root)) {
-            return walk.filter(p -> p.getFileName().toString().equals("pb")).count();
+            return walk.filter(p -> p.getFileName().toString().equals(binName)).count();
         }
     }
 
@@ -151,7 +161,7 @@ class PbInstallerTest {
 
         GradleException ex = assertThrows(GradleException.class, () -> installer.resolve("pb", "latest"));
         assertTrue(ex.getMessage().contains("publishes no sha256 digest"), ex.getMessage());
-        assertEquals(0, countPbFiles(cache), "no pb file should be extracted under cache");
+        assertEquals(0, countBinaryFiles(cache), "no pb file should be extracted under cache");
 
         stub.server().stop(0);
     }
@@ -165,7 +175,7 @@ class PbInstallerTest {
 
         GradleException ex = assertThrows(GradleException.class, () -> installer.resolve("pb", "latest"));
         assertTrue(ex.getMessage().toLowerCase().contains("extract"), ex.getMessage());
-        assertEquals(0, countPbFiles(cache), "no pb file should exist anywhere under cache root");
+        assertEquals(0, countBinaryFiles(cache), "no pb file should exist anywhere under cache root");
 
         stub.server().stop(0);
     }

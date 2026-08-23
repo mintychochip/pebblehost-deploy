@@ -116,18 +116,20 @@ public class PbInstaller {
 
         String downloadUrl = null;
         String expectedSha256 = null;
-        for (JsonElement element : release.getAsJsonArray("assets")) {
-            JsonObject asset = element.getAsJsonObject();
-            if (assetName.equals(asset.get("name").getAsString())) {
-                downloadUrl = asset.get("browser_download_url").getAsString();
-                JsonElement digest = asset.get("digest");
-                if (digest == null || !digest.getAsString().startsWith("sha256:")) {
-                    throw new GradleException("pb release asset '" + assetName
-                        + "' publishes no sha256 digest; refusing to install an unverified binary.");
+        try {
+            for (JsonElement element : release.getAsJsonArray("assets")) {
+                JsonObject asset = element.getAsJsonObject();
+                if (assetName.equals(asset.get("name").getAsString())) {
+                    downloadUrl = asset.get("browser_download_url").getAsString();
+                    expectedSha256 = requireSha256Digest(asset, assetName);
+                    break;
                 }
-                expectedSha256 = digest.getAsString().substring("sha256:".length());
-                break;
             }
+        } catch (GradleException ge) {
+            throw ge;
+        } catch (RuntimeException e) {
+            throw new GradleException("pb release metadata from " + endpoint + " has an unexpected asset shape: "
+                + e.getMessage(), e);
         }
         if (downloadUrl == null) {
             throw new GradleException("pb release " + resolvedTag + " publishes no asset '" + assetName
@@ -190,7 +192,10 @@ public class PbInstaller {
             try {
                 Files.move(stagingBinary, binary, StandardCopyOption.ATOMIC_MOVE);
             } catch (AtomicMoveNotSupportedException e) {
-                Files.move(stagingBinary, binary, StandardCopyOption.REPLACE_EXISTING);
+                deleteRecursively(staging);
+                throw new GradleException("Cannot atomically publish pb into " + dir
+                    + " on this filesystem; refusing a partially-visible install. Set pebblehost.pbBinary to an existing pb"
+                    + " or use a Gradle home on a local filesystem.", e);
             }
             logger.lifecycle("Installed pb {} to {}", dir.getFileName(), binary);
         } catch (NoSuchAlgorithmException e) {
@@ -201,25 +206,41 @@ public class PbInstaller {
             Thread.currentThread().interrupt();
             throw new GradleException("pb auto-install interrupted", e);
         } finally {
-            if (staging != null) {
-                try {
-                    if (Files.exists(staging)) {
-                        try (var walk = Files.walk(staging)) {
-                            walk.sorted(Comparator.reverseOrder())
-                                .forEach(p -> {
-                                    try {
-                                        Files.deleteIfExists(p);
-                                    } catch (IOException ignored) {
-                                        // best-effort cleanup
-                                    }
-                                });
-                        }
-                    }
-                } catch (IOException ignored) {
-                    // best-effort cleanup
-                }
-            }
+            deleteRecursively(staging);
         }
+    }
+
+    private static void deleteRecursively(Path root) {
+        if (root == null || !Files.exists(root)) {
+            return;
+        }
+        try (var walk = Files.walk(root)) {
+            walk.sorted(Comparator.reverseOrder())
+                .forEach(p -> {
+                    try {
+                        Files.deleteIfExists(p);
+                    } catch (IOException ignored) {
+                        // best-effort cleanup
+                    }
+                });
+        } catch (IOException ignored) {
+            // best-effort cleanup
+        }
+    }
+
+    private static String requireSha256Digest(JsonObject asset, String assetName) {
+        JsonElement digest = asset.get("digest");
+        if (digest == null || !digest.getAsString().startsWith("sha256:")) {
+            throw new GradleException("pb release asset '" + assetName
+                + "' publishes no sha256 digest; refusing to install an unverified binary.");
+        }
+        String rawDigest = digest.getAsString();
+        String hex = rawDigest.substring("sha256:".length());
+        if (hex.isEmpty() || hex.length() != 64 || !hex.matches("[0-9a-fA-F]{64}")) {
+            throw new GradleException("pb release asset '" + assetName + "' publishes a malformed sha256 digest ('"
+                + rawDigest + "'); refusing to install.");
+        }
+        return hex;
     }
 
     private InputStream open(String url, String what) {
@@ -293,6 +314,7 @@ public class PbInstaller {
             if (x64) return "x86_64-apple-darwin";
             if (arm64) return "aarch64-apple-darwin";
         } else if (os.contains("windows")) {
+
             return "x86_64-pc-windows-msvc";
         }
         throw new GradleException("pb auto-install does not support os='" + osName + "' arch='" + osArch

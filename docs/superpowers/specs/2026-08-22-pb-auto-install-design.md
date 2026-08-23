@@ -56,7 +56,9 @@ Resolution order:
 
 - `pbVersion = "latest"` → `releases/latest`; pinned value → normalized to
   `v…` tag form and fetched via `releases/tags/<tag>` so digests are always
-  available. One API call per build at most, and only on cache miss.
+  available. `latest` resolves the current tag with one API call per deploy
+  run; downloads only happen on cache miss. Pinned versions are fully
+  offline once cached.
 - If env `GITHUB_TOKEN` set, sent as `Authorization: Bearer` to avoid
   shared-CI-runner rate limits (unauthenticated limit is 60/h/IP).
 

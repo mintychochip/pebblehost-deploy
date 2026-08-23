@@ -187,7 +187,6 @@ class PbInstallerTest {
         String binName = currentBinName();
         Path bin = work.resolve(binName);
         Files.writeString(bin, "#!/bin/sh\necho ok\n");
-        bin.toFile().setExecutable(true);
         Path tarball = tmp.resolve("asset.tar.gz");
         new ProcessBuilder("tar", "-czf", tarball.toString(), "-C", work.toString(), binName)
             .start().waitFor();
@@ -212,6 +211,21 @@ class PbInstallerTest {
         stub.server().stop(0);
         String again = installer.resolve("pb", "2026.9.1.42");
         assertEquals(installed.toAbsolutePath().toString(), again);
+    }
+
+    @Test
+    void digestMismatchRejectsDownloadedAsset() throws Exception {
+        byte[] tarball = realTarballContainingPb();
+        Stub stub = startStub("v2026.9.1.42", "2026.9.1.42",
+            "0000000000000000000000000000000000000000000000000000000000000000", tarball);
+        Path cache = tmp.resolve("cache");
+        PbInstaller installer = new PbInstaller(cache, List.of(), LOG, stub.apiBase());
+
+        GradleException ex = assertThrows(GradleException.class, () -> installer.resolve("pb", "latest"));
+        assertTrue(ex.getMessage().contains("sha256 verification"), ex.getMessage());
+        assertEquals(0, countBinaryFiles(cache), "no pb file should be extracted under cache");
+
+        stub.server().stop(0);
     }
 
     @Test

@@ -280,25 +280,26 @@ public class PbInstaller {
     }
 
     private <T> HttpResponse<T> send(String url, HttpResponse.BodyHandler<T> handler) {
-        URI uri;
+        HttpRequest request;
         try {
-            uri = URI.create(url);
+            URI uri = URI.create(url);
+            HttpRequest.Builder requestBuilder = HttpRequest.newBuilder(uri)
+                .timeout(Duration.ofSeconds(30))
+                .GET();
+            String token = System.getenv("GITHUB_TOKEN");
+            if (token != null && !token.isBlank()) {
+                requestBuilder.header("Authorization", "Bearer " + token);
+            }
+            request = requestBuilder.build();
         } catch (IllegalArgumentException e) {
-            throw new GradleException("pb auto-install received an invalid URL '" + url + "': " + e.getMessage(), e);
-        }
-        HttpRequest.Builder request = HttpRequest.newBuilder(uri)
-            .timeout(Duration.ofSeconds(30))
-            .GET();
-        String token = System.getenv("GITHUB_TOKEN");
-        if (token != null && !token.isBlank()) {
-            request.header("Authorization", "Bearer " + token);
+            throw new GradleException("pb auto-install received an invalid download URL '" + url + "': " + e.getMessage(), e);
         }
         HttpClient client = HttpClient.newBuilder()
             .followRedirects(HttpClient.Redirect.NORMAL)
             .connectTimeout(Duration.ofSeconds(30))
             .build();
         try {
-            return client.send(request.build(), handler);
+            return client.send(request, handler);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new GradleException("Network failure fetching " + url, e);

@@ -82,7 +82,7 @@ class PbInstallerTest {
 
     @Test void pathHitShortCircuitsBeforeAutoInstall() throws Exception {
         Path binDir = Files.createDirectories(tmp.resolve("bin"));
-        Path pb = binDir.resolve("pb");
+        Path pb = binDir.resolve(currentBinName());
         Files.writeString(pb, "#!/bin/sh\n");
         PbInstaller installer = new PbInstaller(tmp.resolve("cache"), List.of(binDir.toString()), LOG,
             "http://127.0.0.1:1/releases/");

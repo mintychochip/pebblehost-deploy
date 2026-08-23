@@ -4,7 +4,7 @@
 
 **Goal:** The deploy plugin resolves `pb` automatically — explicit `pbBinary` > `PATH` > sha256-verified download from `mintychochip/pebblehost-cli` GitHub releases, cached per version under `$GRADLE_USER_HOME`.
 
-**Architecture:** New `PbInstaller` class owns resolution tiers and the download/verify/extract pipeline (`java.net.http` + system `tar`). `DeployPebbleHostTask` calls it before constructing `PebbleHostClient`. A new `pbVersion` extension property (convention `"latest"`) selects the release.
+**Architecture:** New `PbInstaller` class owns resolution tiers and the download/verify/extract pipeline (`java.net.http` + system `tar`). `DeployPebbleHostTask` calls it before constructing `PebbleHostClient`. A new `cliVersion` extension property (convention `"latest"`) selects the release.
 
 **Tech Stack:** Java 25 (toolchain), Gson (already a dependency), JUnit 5 + `com.sun.net.httpserver` for offline stub tests, system `tar` for extraction.
 
@@ -28,7 +28,7 @@
 
 **Interfaces:**
 - Consumes: nothing new (GradleException, Gson later tasks).
-- Produces: `PbInstaller(Path cacheRoot, Logger logger)` public ctor; `public String resolve(String pbBinary, String pbVersion)` returning absolute path to a usable binary; package-visible `PbInstaller(Path cacheRoot, List<String> pathDirs, Logger logger, String apiBase)` test seam; `static String normalizeTag(String)`; `static String platformTarget(String osName, String osArch)`.
+- Produces: `PbInstaller(Path cacheRoot, Logger logger)` public ctor; `public String resolve(String pbBinary, String cliVersion)` returning absolute path to a usable binary; package-visible `PbInstaller(Path cacheRoot, List<String> pathDirs, Logger logger, String apiBase)` test seam; `static String normalizeTag(String)`; `static String platformTarget(String osName, String osArch)`.
 
 - [ ] **Step 1: Write failing tests**
 
@@ -188,7 +188,7 @@ public class PbInstaller {
     }
 
     /** Returns an absolute filesystem path to a usable pb binary. */
-    public String resolve(String pbBinary, String pbVersion) {
+    public String resolve(String pbBinary, String cliVersion) {
         if (isExplicit(pbBinary)) {
             Path explicit = Path.of(pbBinary);
             if (!Files.isRegularFile(explicit)) {
@@ -202,7 +202,7 @@ public class PbInstaller {
         if (onPath != null) {
             return onPath.toAbsolutePath().toString();
         }
-        return install(pbVersion == null || pbVersion.isBlank() ? "latest" : pbVersion.trim());
+        return install(cliVersion == null || cliVersion.isBlank() ? "latest" : cliVersion.trim());
     }
 
     private static boolean isExplicit(String pbBinary) {
@@ -571,27 +571,27 @@ git commit -m "test(plugin): cover pb download, digest verification, and caching
 - Modify: `plugin/src/main/java/dev/mintychochip/pebblehost/deploy/DeployPebbleHostTask.java`
 
 **Interfaces:**
-- Consumes: `PbInstaller(Path cacheRoot, Logger logger)`, `resolve(String pbBinary, String pbVersion)`.
-- Produces: extension/task property `Property<String> getPbVersion()` (convention `"latest"`); `deploy()` uses the resolved absolute binary path.
+- Consumes: `PbInstaller(Path cacheRoot, Logger logger)`, `resolve(String pbBinary, String cliVersion)`.
+- Produces: extension/task property `Property<String> getCliVersion()` (convention `"latest"`); `deploy()` uses the resolved absolute binary path.
 
 - [ ] **Step 1: Add the property to the extension**
 
 In `PebbleHostExtension.java`, add the field next to `pbBinary` (line 23):
 
 ```java
-    private final Property<String> pbVersion;
+    private final Property<String> cliVersion;
 ```
 
 In the constructor after `this.pbBinary = objects.property(String.class).convention("pb");` (line 40):
 
 ```java
-        this.pbVersion = objects.property(String.class).convention("latest");
+        this.cliVersion = objects.property(String.class).convention("latest");
 ```
 
 After `public Property<String> getPbBinary() { return pbBinary; }` (line 55):
 
 ```java
-    public Property<String> getPbVersion() { return pbVersion; }
+    public Property<String> getCliVersion() { return cliVersion; }
 ```
 
 - [ ] **Step 2: Wire it through plugin registration**
@@ -599,7 +599,7 @@ After `public Property<String> getPbBinary() { return pbBinary; }` (line 55):
 In `PebbleHostPlugin.java`, after `task.getPbBinary().set(ext.getPbBinary());` (line 24):
 
 ```java
-            task.getPbVersion().set(ext.getPbVersion());
+            task.getCliVersion().set(ext.getCliVersion());
 ```
 
 - [ ] **Step 3: Resolve pb in the task action**
@@ -607,7 +607,7 @@ In `PebbleHostPlugin.java`, after `task.getPbBinary().set(ext.getPbBinary());` (
 In `DeployPebbleHostTask.java`, add next to line 33 (`@Input public abstract Property<String> getPbBinary();`):
 
 ```java
-    @Input public abstract Property<String> getPbVersion();
+    @Input public abstract Property<String> getCliVersion();
 ```
 
 Replace lines 51 (client construction) with:
@@ -617,7 +617,7 @@ Replace lines 51 (client construction) with:
             getProject().getGradle().getGradleUserHomeDir().toPath()
                 .resolve("caches").resolve("pebblehost-deploy").resolve("pb"),
             getLogger());
-        String pb = installer.resolve(getPbBinary().get(), getPbVersion().get());
+        String pb = installer.resolve(getPbBinary().get(), getCliVersion().get());
         PebbleHostClient client = new PebbleHostClient(pb, token, config.baseUrl(), new ProcessCommandRunner());
 ```
 
@@ -632,7 +632,7 @@ Expected: BUILD SUCCESSFUL, exit=0 — all existing suites plus PbInstallerTest 
 git add plugin/src/main/java/dev/mintychochip/pebblehost/deploy/PebbleHostExtension.java \
         plugin/src/main/java/dev/mintychochip/pebblehost/deploy/PebbleHostPlugin.java \
         plugin/src/main/java/dev/mintychochip/pebblehost/deploy/DeployPebbleHostTask.java
-git commit -m "feat(plugin): wire pbVersion DSL and auto-resolve pb in deploy task"
+git commit -m "feat(plugin): wire cliVersion DSL and auto-resolve pb in deploy task"
 ```
 
 ---
@@ -658,7 +658,7 @@ there.
 
 ```kotlin
 pebblehost {
-    pbVersion = "latest"   // default; or pin, e.g. "2026.8.21.16"
+    cliVersion = "latest"   // default; or pin, e.g. "2026.8.21.16"
 }
 ```
 
@@ -676,7 +676,7 @@ Expected: one match.
 
 ```bash
 git add README.md
-git commit -m "docs: describe pb binary resolution and pbVersion"
+git commit -m "docs: describe pb binary resolution and cliVersion"
 ```
 
 ---

@@ -16,7 +16,7 @@ Upstream publishes ready-made release binaries; the plugin should install
 
 - **Scope**: plugin-level resolution only. `deploy.yml` is unchanged in this
   feature (its PATH-installed `pb` hits resolution tier 2 below).
-- **Version policy**: `pbVersion` defaults to `"latest"`; consumers may pin an
+- **Version policy**: `cliVersion` defaults to `"latest"`; consumers may pin an
   exact version (`"2026.8.21.16"` or `"v2026.8.21.16"`).
 - **Integrity**: downloads are verified against the sha256 digest GitHub
   publishes on each release asset (`assets[].digest`, observed on release
@@ -54,7 +54,7 @@ Resolution order:
 
 ### Version resolution
 
-- `pbVersion = "latest"` → `releases/latest`; pinned value → normalized to
+- `cliVersion = "latest"` → `releases/latest`; pinned value → normalized to
   `v…` tag form and fetched via `releases/tags/<tag>` so digests are always
   available. `latest` resolves the current tag with one API call per deploy
   run; downloads only happen on cache miss. Pinned versions are fully
@@ -108,11 +108,11 @@ pebblehost {
     // existing
     pbBinary = "pb"          // unchanged; explicit non-default paths must exist
     // new
-    pbVersion = "latest"     // convention; or e.g. "2026.8.21.16"
+    cliVersion = "latest"     // convention; or e.g. "2026.8.21.16"
 }
 ```
 
-Task property `pbVersion` wired like its siblings; no new CLI options.
+Task property `cliVersion` wired like its siblings; no new CLI options.
 
 ## Testing
 
@@ -123,7 +123,7 @@ Task property `pbVersion` wired like its siblings; no new CLI options.
   `.tar.gz` produced by system `tar` in `@TempDir`; digest mismatch rejected;
   unsupported platform error.
 - Existing functional tests keep passing explicit fake-pb paths — unaffected.
-- README: auto-install behavior, `pbVersion`, cache location, token/rate-limit
+- README: auto-install behavior, `cliVersion`, cache location, token/rate-limit
   notes.
 
 ## Erratum (2026-08-22, post-merge)

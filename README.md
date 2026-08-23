@@ -110,7 +110,7 @@ there.
 
 ```kotlin
 pebblehost {
-    pbVersion = "latest"   // default; or pin, e.g. "2026.8.21.16"
+    cliVersion = "latest"   // default; or pin, e.g. "2026.8.21.16"
 }
 ```
 

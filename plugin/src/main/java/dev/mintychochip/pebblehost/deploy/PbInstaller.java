@@ -55,7 +55,7 @@ public class PbInstaller {
     }
 
     /** Returns an absolute filesystem path to a usable pb binary. */
-    public String resolve(String pbBinary, String pbVersion) {
+    public String resolve(String pbBinary, String cliVersion) {
         if (isExplicit(pbBinary)) {
             try {
                 Path explicit = Path.of(pbBinary);
@@ -73,7 +73,7 @@ public class PbInstaller {
         if (onPath != null) {
             return onPath.toAbsolutePath().toString();
         }
-        return install(pbVersion == null || pbVersion.isBlank() ? "latest" : pbVersion.trim());
+        return install(cliVersion == null || cliVersion.isBlank() ? "latest" : cliVersion.trim());
     }
 
     private static boolean isExplicit(String pbBinary) {

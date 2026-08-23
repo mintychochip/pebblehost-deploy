@@ -12,14 +12,14 @@ servers via the [pebblehost-cli](https://github.com/mintychochip/pebblehost-cli)
 
 ```
 pebblehost-deploy/
-├── plugin/          # included build — Gradle deploy plugin (`dev.pebblehost.deploy`)
+├── plugin/          # included build — Gradle deploy plugin (`dev.mintychochip.pebblehost.deploy`)
 ├── test-plugin/     # `:test-plugin` — sample Paper plugin consumer
 ├── gradlew          # root wrapper — run all builds from here
 └── settings.gradle.kts
 ```
 
 The deploy plugin lives in `plugin/` as an included build. `test-plugin`
-resolves `dev.pebblehost.deploy` from that live source via
+resolves `dev.mintychochip.pebblehost.deploy` from that live source via
 `pluginManagement { includeBuild("plugin") }`, so a single `./gradlew build`
 always exercises the current plugin code.
 
@@ -63,7 +63,7 @@ with a token that has `read:packages`. Then apply the plugin:
 
 ```kotlin
 plugins {
-    id("dev.pebblehost.deploy") version "2026.08.21"
+    id("dev.mintychochip.pebblehost.deploy") version "2026.08.21"
 }
 ```
 
@@ -80,7 +80,7 @@ plugins {
 
 ```kotlin
 plugins {
-    id("dev.pebblehost.deploy")
+    id("dev.mintychochip.pebblehost.deploy")
 }
 
 pebblehost {
@@ -116,7 +116,7 @@ To assign a target to a group, configure the `Target` directly:
 
 ```kotlin
 pebblehost {
-    targets.add(objects.newInstance(dev.pebblehost.deploy.Target::class.java).apply {
+    targets.add(objects.newInstance(dev.mintychochip.pebblehost.deploy.Target::class.java).apply {
         serverId.set("abc123")
         group.set("canary")
     })

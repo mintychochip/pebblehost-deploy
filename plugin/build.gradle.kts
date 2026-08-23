@@ -3,12 +3,11 @@ plugins {
     `maven-publish`
 }
 
-group = "dev.pebblehost"
+group = "dev.mintychochip.pebblehost"
 version = "2026.08.21"
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_17
-    targetCompatibility = JavaVersion.VERSION_17
+    toolchain.languageVersion.set(JavaLanguageVersion.of(25))
 }
 
 repositories {
@@ -26,8 +25,8 @@ dependencies {
 gradlePlugin {
     plugins {
         create("pebblehostDeploy") {
-            id = "dev.pebblehost.deploy"
-            implementationClass = "dev.pebblehost.deploy.PebbleHostPlugin"
+            id = "dev.mintychochip.pebblehost.deploy"
+            implementationClass = "dev.mintychochip.pebblehost.deploy.PebbleHostPlugin"
         }
     }
 }

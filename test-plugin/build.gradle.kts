@@ -1,9 +1,9 @@
 plugins {
     java
-    id("dev.pebblehost.deploy")
+    id("dev.mintychochip.pebblehost.deploy")
 }
 
-group = "dev.pebblehost"
+group = "dev.mintychochip.pebblehost"
 version = "1.0.0"
 
 repositories {
@@ -54,7 +54,7 @@ pebblehost {
             val parts = spec.split(":", limit = 2)
             val targetServerId = parts[0]
             val targetGroup = parts.getOrElse(1) { "default" }
-            targets.add(objects.newInstance(dev.pebblehost.deploy.Target::class.java).apply {
+            targets.add(objects.newInstance(dev.mintychochip.pebblehost.deploy.Target::class.java).apply {
                 serverId.set(targetServerId)
                 group.set(targetGroup)
             })

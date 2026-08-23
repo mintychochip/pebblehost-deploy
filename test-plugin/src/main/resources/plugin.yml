@@ -1,6 +1,6 @@
 name: PebbleHostTest
 version: '1.0.0'
-main: dev.pebblehost.test.PebbleHostTestPlugin
+main: dev.mintychochip.pebblehost.test.PebbleHostTestPlugin
 description: Test plugin for PebbleHost deployment verification
 author: pebblehost-deploy
 api-version: '26.2'

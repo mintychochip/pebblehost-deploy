@@ -21,6 +21,7 @@ public abstract class PebbleHostExtension {
     private final Property<Long> verifyTimeoutMs;
     private final Property<String> rollback;
     private final Property<String> pbBinary;
+    private final Property<String> pbVersion;
     private final ListProperty<Target> targets;
 
     @Inject
@@ -38,6 +39,7 @@ public abstract class PebbleHostExtension {
         this.verifyTimeoutMs = objects.property(Long.class).convention(180_000L);
         this.rollback = objects.property(String.class).convention("abort");
         this.pbBinary = objects.property(String.class).convention("pb");
+        this.pbVersion = objects.property(String.class).convention("latest");
         this.targets = objects.listProperty(Target.class);
     }
 
@@ -53,6 +55,7 @@ public abstract class PebbleHostExtension {
     public Property<Long> getVerifyTimeoutMs() { return verifyTimeoutMs; }
     public Property<String> getRollback() { return rollback; }
     public Property<String> getPbBinary() { return pbBinary; }
+    public Property<String> getPbVersion() { return pbVersion; }
     public ListProperty<Target> getTargets() { return targets; }
 
     /** Convenience: add a target server to the rollout. */

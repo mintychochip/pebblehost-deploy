@@ -22,6 +22,7 @@ public class PebbleHostPlugin implements Plugin<Project> {
             task.getVerifyTimeoutMs().set(ext.getVerifyTimeoutMs());
             task.getRollback().set(ext.getRollback());
             task.getPbBinary().set(ext.getPbBinary());
+            task.getPbVersion().set(ext.getPbVersion());
             task.getTargets().set(ext.getTargets());
         });
     }

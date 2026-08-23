@@ -31,6 +31,7 @@ public abstract class DeployPebbleHostTask extends DefaultTask {
     @Input public abstract Property<Long> getVerifyTimeoutMs();
     @Input public abstract Property<String> getRollback();
     @Input public abstract Property<String> getPbBinary();
+    @Input public abstract Property<String> getPbVersion();
     @Input public abstract ListProperty<Target> getTargets();
 
     @Option(option = "deploy-restart", description = "Restart servers after upload (true/false)")
@@ -48,7 +49,12 @@ public abstract class DeployPebbleHostTask extends DefaultTask {
         File jar = getJar().get().getAsFile();
         DeployConfig config = DeployConfig.from(token, getBaseUrl().get(), jar, getTargetDir().get(),
             getRestart().get(), getVerifyState().get(), getVerifyTimeoutMs().get(), getRollback().get());
-        PebbleHostClient client = new PebbleHostClient(getPbBinary().get(), token, config.baseUrl(), new ProcessCommandRunner());
+        PbInstaller installer = new PbInstaller(
+            getProject().getGradle().getGradleUserHomeDir().toPath()
+                .resolve("caches").resolve("pebblehost-deploy").resolve("pb"),
+            getLogger());
+        String pb = installer.resolve(getPbBinary().get(), getPbVersion().get());
+        PebbleHostClient client = new PebbleHostClient(pb, token, config.baseUrl(), new ProcessCommandRunner());
         RolloutPlanner.RolloutPlan plan = RolloutPlanner.plan(getTargets().get(), getStrategy().get(),
             getCanaryGate().get(), getContinueAfterCanary().get());
         try {

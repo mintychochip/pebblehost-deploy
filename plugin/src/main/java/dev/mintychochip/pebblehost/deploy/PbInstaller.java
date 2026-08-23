@@ -14,6 +14,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -106,7 +107,11 @@ public class PbInstaller {
         }
 
         JsonObject release = getJson(endpoint, "pb release metadata");
-        String resolvedTag = release.get("tag_name").getAsString();
+        JsonElement tagEl = release.get("tag_name");
+        if (tagEl == null || !tagEl.isJsonPrimitive()) {
+            throw new GradleException("pb release metadata is missing a usable 'tag_name' string field.");
+        }
+        String resolvedTag = tagEl.getAsString();
         if (!resolvedTag.startsWith("v")) {
             throw new GradleException("Unexpected pb release tag '" + resolvedTag + "' (expected a v-prefixed tag).");
         }
@@ -191,11 +196,15 @@ public class PbInstaller {
             Files.createDirectories(dir);
             try {
                 Files.move(stagingBinary, binary, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
+            } catch (AtomicMoveNotSupportedException | FileAlreadyExistsException e) {
                 deleteRecursively(staging);
-                throw new GradleException("Cannot atomically publish pb into " + dir
-                    + " on this filesystem; refusing a partially-visible install. Set pebblehost.pbBinary to an existing pb"
-                    + " or use a Gradle home on a local filesystem.", e);
+                if (Files.isRegularFile(binary)) {
+                    logger.lifecycle("Using concurrently installed pb at {}", binary);
+                } else {
+                    throw new GradleException("Cannot atomically publish pb into " + dir
+                        + " on this filesystem; refusing a partially-visible install. Set pebblehost.pbBinary to an existing pb"
+                        + " or use a Gradle home on a local filesystem.", e);
+                }
             }
             logger.lifecycle("Installed pb {} to {}", dir.getFileName(), binary);
         } catch (NoSuchAlgorithmException e) {
@@ -271,7 +280,13 @@ public class PbInstaller {
     }
 
     private <T> HttpResponse<T> send(String url, HttpResponse.BodyHandler<T> handler) {
-        HttpRequest.Builder request = HttpRequest.newBuilder(URI.create(url))
+        URI uri;
+        try {
+            uri = URI.create(url);
+        } catch (IllegalArgumentException e) {
+            throw new GradleException("pb auto-install received an invalid URL '" + url + "': " + e.getMessage(), e);
+        }
+        HttpRequest.Builder request = HttpRequest.newBuilder(uri)
             .timeout(Duration.ofSeconds(30))
             .GET();
         String token = System.getenv("GITHUB_TOKEN");

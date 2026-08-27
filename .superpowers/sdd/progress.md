@@ -1,0 +1,6 @@
+Task 1: complete (commits 246a8bf..81b4284, review clean; Minor deferred to final review: HttpRequest.newBuilder sits outside the URL guard, PbInstaller.java:299-300)
+Task 2: complete (commits 81b4284..b2e5185, review approved; 17 PbInstallerTest green)
+Task 3: complete (commit 67d1027, review approved zero findings; full build exit=0, 50 tests)
+Task 4: complete pending review (commit 7ef77e6, README section inserted at line 102)
+Task 4: complete (commit 7ef77e6, review approved zero findings)
+Final review: complete (fix commit 48ba677; verdict ready-to-merge, zero findings; full clean build exit=0)
